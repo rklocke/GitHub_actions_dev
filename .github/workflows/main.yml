@@ -14,13 +14,13 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install dxpy
-    - name: List files in the repository
-      run: |
-        CONDUCTOR_CONFIG=$(ls ${{ github.workspace }} *.json)
-        echo $CONDUCTOR_CONFIG
-        echo "CONDUCTOR_CONFIG=$CONDUCTOR_CONFIG" >> $GITHUB_ENV
+    # - name: List files in the repository
+    #   run: |
+    #     CONDUCTOR_CONFIG=$(ls ${{ github.workspace }} *.json)
+    #     echo $CONDUCTOR_CONFIG
+    #     echo "CONDUCTOR_CONFIG=$CONDUCTOR_CONFIG" >> $GITHUB_ENV
     - name: Upload to DNAnexus
-      env:
-        conductor_config: ${{ env.CONDUCTOR_CONFIG }}
+      # env:
+      #   conductor_config: ${{ env.CONDUCTOR_CONFIG }}
       run: |
-        dx upload $conductor_config --token ${{ secrets.DX_TOKEN }} --destination 003_240229_GitHub_Actions_testing:/
+        dx upload eggd_conductor_dias_TWE_config_v2.0.0.json --token ${{ secrets.DX_TOKEN }} --destination 003_240229_GitHub_Actions_testing:/
