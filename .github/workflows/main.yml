@@ -16,7 +16,11 @@ jobs:
         python -m pip install dxpy
     - name: List files in the repository
       run: |
-       ls ${{ github.workspace }}
-    # - name: Upload to DNAnexus
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.DX_TOKEN }}
+        CONDUCTOR_CONFIG=$(ls ${{ github.workspace }} *.json)
+        echo $CONDUCTOR_CONFIG
+        echo "CONDUCTOR_CONFIG=$CONDUCTOR_CONFIG" >> $GITHUB_ENV
+    - name: Upload to DNAnexus
+      env:
+        conductor_config: ${{ env.CONDUCTOR_CONFIG }}
+      run: |
+        dx upload $conductor_config --token ${{ secrets.DX_TOKEN }} --destination 003_240229_GitHub_Actions_testing:/
