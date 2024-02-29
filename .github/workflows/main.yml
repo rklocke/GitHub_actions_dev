@@ -14,6 +14,6 @@ jobs:
     - name: List files in the repository
       run: |
        ls ${{ github.workspace }}
-    - name: Upload to DNAnexus
-      env:
-        GITHUB_TOKEN: ${{ secrets.DX_TOKEN }}
+    # - name: Upload to DNAnexus
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.DX_TOKEN }}
