@@ -24,13 +24,15 @@ jobs:
         with:
           files: |
             **.json
-      - name: List all changed JSON files
+      - name: Upload changed JSON files
         if: steps.changed-files.outputs.any_changed == 'true'
         env: 
           ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
+          dx login --token ${{ secrets.DX_TOKEN }}
           for file in ${ALL_CHANGED_FILES}; do
             echo "$file was changed"
+            dx upload $file --destination 003_240229_GitHub_Actions_testing:/
           done
     # - name: List files in the repository
     #   run: |
