@@ -32,8 +32,10 @@ jobs:
           dx login --token ${{ secrets.DX_TOKEN }}
           for file in ${ALL_CHANGED_FILES}; do
             echo "$file was changed"
+            grep -oE 'file-[A-Za-z0-9]+' $file | xargs -P8 -n1 -I{} dx describe --json {} | jq -c '[.id,.name]'
             dx upload $file --destination 003_240229_GitHub_Actions_testing:/
           done
+          
     # - name: List files in the repository
     #   run: |
     #     CONDUCTOR_CONFIG=$(ls ${{ github.workspace }} *.json)
