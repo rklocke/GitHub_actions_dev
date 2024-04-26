@@ -1,27 +1,49 @@
 name: check_new_version
-on: [push]
+on:
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  build:
+  changed_files:
     runs-on: ubuntu-latest
+    name: Test changed files
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.8
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install dxpy
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install dxpy
+      - name: Get changed JSON files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            **.json
+      - name: Upload changed JSON files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env: 
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          dx login --token ${{ secrets.DX_TOKEN }}
+          for file in ${ALL_CHANGED_FILES}; do
+            echo "$file was changed"
+            grep -oE 'file-[A-Za-z0-9]+' $file | xargs -P8 -n1 -I{} dx describe --json {} | jq -c '[.id,.name]'
+            dx upload $file --destination 003_240229_GitHub_Actions_testing:/
+          done
+          
     # - name: List files in the repository
     #   run: |
     #     CONDUCTOR_CONFIG=$(ls ${{ github.workspace }} *.json)
     #     echo $CONDUCTOR_CONFIG
     #     echo "CONDUCTOR_CONFIG=$CONDUCTOR_CONFIG" >> $GITHUB_ENV
-    - name: Upload to DNAnexus
-      # env:
-      #   conductor_config: ${{ env.CONDUCTOR_CONFIG }}
-      run: |
-        dx login --token ${{ secrets.DX_TOKEN }}
-        dx upload eggd_conductor_dias_TWE_config_v2.0.0.json --destination 003_240229_GitHub_Actions_testing:/
+    # - name: Upload to DNAnexus
+    #   # env:
+    #   #   conductor_config: ${{ env.CONDUCTOR_CONFIG }}
+    #   run: |
+    #     dx login --token ${{ secrets.DX_TOKEN }}
+    #     dx upload eggd_conductor_dias_TWE_config_v2.0.0.json --destination 003_240229_GitHub_Actions_testing:/
