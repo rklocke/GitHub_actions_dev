@@ -39,3 +39,6 @@ jobs:
             FILE_ID=$(dx upload $file --destination 003_240229_GitHub_Actions_testing:/ --brief)
             echo "uploaded file ID is $FILE_ID"
           done
+      - name: Run Python script
+        run: |
+          python perform_testing.py -i ${ALL_CHANGED_FILES}
