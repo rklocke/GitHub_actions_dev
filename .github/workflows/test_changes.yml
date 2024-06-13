@@ -40,5 +40,7 @@ jobs:
             echo "uploaded file ID is $FILE_ID"
           done
       - name: Run Python script
+        env: 
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           python perform_testing.py -i ${ALL_CHANGED_FILES}
