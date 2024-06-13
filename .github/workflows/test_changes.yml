@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install dxpy
+          python -m pip install dxpy json packaging
 
       - name: Get changed JSON files
         id: changed-files
