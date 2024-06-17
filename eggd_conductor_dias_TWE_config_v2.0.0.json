@@ -3,7 +3,7 @@
     "assay": "TWE",
     "assay_code": "-EGG4|-9526-|-9688-",
     "version": "2.0.0",
-    "details": "Includes main Dias rare disease workflows: single, multi and QC reports",
+    "details": "Includes the main Dias rare disease workflows: single, multi and QC reports",
     "changelog": {
         "v1.0.0": "Initial working version",
         "v1.1.0": "Updated dias_single and dias_multi workflows, specifying input files",
