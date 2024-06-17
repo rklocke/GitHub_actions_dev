@@ -16,7 +16,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     args : Namespace
         Namespace of passed command line argument inputs
     """
-    # Command line args set up for determining audit period
+    # Command line args set up for running tests
     parser = argparse.ArgumentParser(
         description='Config files to run tests for'
     )
@@ -24,9 +24,16 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument(
         '-i',
         '--input_config',
-        nargs='+',
         type=str,
-        help="Config JSON file(s) which were changed in PR"
+        help="Config JSON file which was changed in PR"
+    )
+
+    parser.add_argument(
+        '-f',
+        '--file_id',
+        nargs='?',
+        type=str,
+        help='File ID of changed config file in DNAnexus'
     )
 
     return parser.parse_args()
@@ -244,70 +251,76 @@ class DXManage():
         return configs_to_use
 
     def match_updated_config_to_prod_config(
-        self, updated_config_info, prod_configs
+        self, updated_config, updated_config_id, prod_configs
     ):
         """
-        _summary_
+        For the config file which has been updated, get info on the
+        highest related version in 001_Reference
 
         Parameters
         ----------
-        changed_config_info : _type_
-            _description_
-        configs_to_use : _type_
-            _description_
+        updated_config : dict
+            the config file that was updated in the PR as a dict
+        updated_config_id: str
+            DNAnexus file ID of updated config
+        prod_configs : dict
+            dict where keys are unique assay codes and values are full
+            config as a dict
 
         Returns
         -------
-        _type_
-            _description_
+        changed_config_to_prod : dict
+            dict with info about the changed config and the related prod
+            config
         """
-
-        # print(prod_configs)
+        changed_config_to_prod = defaultdict(dict)
         prod_config_assay_codes = sorted([
             x.get('assay_code') for x in prod_configs.values()
         ])
-        changed_config_to_prod = defaultdict(lambda: defaultdict(lambda: defaultdict()))
 
-        for updated_config in updated_config_info:
-            config_matches = {}
-            updated_config_assay = updated_config.get('assay')
-            updated_config_code = updated_config.get('assay_code')
-            updated_config_version = updated_config.get('version')
+        # Get assay code and version info from updated config
+        updated_config_code = updated_config.get('assay_code')
+        updated_config_version = updated_config.get('version')
 
-            for prod_code in prod_config_assay_codes:
-                # find all config files that match this updated config
-                if re.search(prod_code, updated_config_code, re.IGNORECASE):
-                    config_matches[prod_code] = prod_configs[prod_code]['version']
+        config_matches = {}
+        for prod_code in prod_config_assay_codes:
+            # find all prod config files that match the updated config assay
+            # code
+            if re.search(prod_code, updated_config_code, re.IGNORECASE):
+                config_matches[prod_code] = prod_configs[prod_code]['version']
 
-            if config_matches:
-                highest_ver_config = max(config_matches.values(), key=parse)
+        if config_matches:
+            # Get highest version of prod config files that matches the updated
+            # config
+            highest_ver_config = max(config_matches.values(), key=parse)
 
-                latest_config_key = list(config_matches)[list(config_matches.values()).index(highest_ver_config)]
+            latest_config_key = list(config_matches)[
+                list(config_matches.values()).index(highest_ver_config)
+            ]
 
-                # Add versions of updated and highest version prod config
-                # files for that assay to dict
-                changed_config_to_prod[updated_config_assay]['updated']['version'] = updated_config_version
-                changed_config_to_prod[updated_config_assay]['prod']['version'] = highest_ver_config
+            # Add version and file ID of the config file updated in the PR
+            changed_config_to_prod['updated']['version'] = updated_config_version
+            changed_config_to_prod['updated']['file_id'] = updated_config_id
 
-                # Get file ID of the highest version prod config file and add
-                # to dict
-                prod_config_file_id = prod_configs[latest_config_key]['file_id']
-                changed_config_to_prod[updated_config_assay]['prod']['file_id'] = prod_config_file_id
+            # Add version and file ID of the related prod config file
+            changed_config_to_prod['prod']['version'] = highest_ver_config
+            changed_config_to_prod['prod']['file_id'] = prod_configs[
+                latest_config_key
+            ]['file_id']
 
-        print(changed_config_to_prod)
+        return changed_config_to_prod
 
 
 def main():
     args = parse_args()
     dx_manage = DXManage(args)
-    changed_configs_info = []
-    for config_file in args.input_config:
-        changed_config_dict = dx_manage.read_in_json(config_file)
-        changed_configs_info.append(changed_config_dict)
+
+    changed_config_dict = dx_manage.read_in_json(args.input_config)
+
     config_data = dx_manage.get_json_configs_in_DNAnexus()
     configs_to_use = dx_manage.filter_highest_config_version(config_data)
     dx_manage.match_updated_config_to_prod_config(
-        changed_configs_info, configs_to_use
+        changed_config_dict, configs_to_use, args.file_id
     )
 
 if __name__ == '__main__':

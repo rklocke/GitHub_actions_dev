@@ -5,9 +5,9 @@ on:
       - main
 
 jobs:
-  changed_files:
+  upload_and_test:
     runs-on: ubuntu-latest
-    name: Test changed files
+    name: Upload and test changed files
     steps:
       - uses: actions/checkout@v4
 
@@ -28,26 +28,23 @@ jobs:
           files: |
             **.json
 
-      - name: Upload changed JSON files
-        id: changed_config
+      - name: Upload changed JSON files to DNAnexus
+        id: changed-config
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
-          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           dx login --token ${{ secrets.DX_TOKEN }}
-          for file in ${ALL_CHANGED_FILES}; do
-            echo "$file was changed in this PR"
-            FILE_ID=$(dx upload $file --destination
-            echo "FILE_ID=$FILE_ID" >> $GITHUB_OUTPUT
-            003_240229_GitHub_Actions_testing:/ --brief)
-            echo "uploaded file ID is $FILE_ID"
-          done
+          echo "${CHANGED_FILES} was changed in this PR"
+          FILE_ID=$(dx upload $file --destination ${{ env.TESTING_PROJECT }}:/ --brief)
+          echo "Config file uploaded. File ID: $FILE_ID"
+          echo "FILE_ID=$FILE_ID" >> $GITHUB_OUTPUT
 
       - name: Run Python script
         env:
           ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
-          FILE_ID: ${{ steps.changed_config.outputs.FILE_ID}}
+          FILE_ID: ${{ steps.changed-config.outputs.FILE_ID }}
         run: |
           echo ${ALL_CHANGED_FILES}
           echo ${FILE_ID}
-          python perform_testing.py -i ${ALL_CHANGED_FILES}
+          python perform_testing.py -i ${ALL_CHANGED_FILES} -f ${FILE_ID}
