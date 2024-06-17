@@ -36,7 +36,7 @@ jobs:
         run: |
           dx login --token ${{ secrets.DX_TOKEN }}
           echo "${CHANGED_FILES} was changed in this PR"
-          FILE_ID=$(dx upload ${CHANGED_FILES} --destination ${{ env.TESTING_PROJECT }}:/ --brief)
+          FILE_ID=$(dx upload ${CHANGED_FILES} --destination ${{ vars.TESTING_PROJECT }}:/ --brief)
           echo "Config file uploaded. File ID: $FILE_ID"
           echo "FILE_ID=$FILE_ID" >> $GITHUB_OUTPUT
 
