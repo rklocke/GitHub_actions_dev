@@ -1,3 +1,2 @@
 dxpy==0.365.0
-json==2.0.9
-packaging==23.2
+packaging==21.3

@@ -1,7 +1,9 @@
 import argparse
 import dxpy as dx
 import json
+import re
 
+from collections import defaultdict
 from packaging.version import Version, parse
 
 
@@ -14,7 +16,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     args : Namespace
         Namespace of passed command line argument inputs
     """
-    # Command line args set up for determining audit period
+    # Command line args set up for running tests
     parser = argparse.ArgumentParser(
         description='Config files to run tests for'
     )
@@ -22,32 +24,19 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument(
         '-i',
         '--input_config',
-        nargs='+',
         type=str,
-        help="Config JSON file(s) which were changed in PR"
+        help="Config JSON file which was changed in PR"
+    )
+
+    parser.add_argument(
+        '-f',
+        '--file_id',
+        nargs='?',
+        type=str,
+        help='File ID of changed config file in DNAnexus'
     )
 
     return parser.parse_args()
-
-
-# def read_PR_config_version(json_dict):
-#     """
-#     _summary_
-
-#     Parameters
-#     ----------
-#     json_dict : _type_
-#         _description_
-
-#     Returns
-#     -------
-#     _type_
-#         _description_
-#     """
-#     changed_config_code = json_dict.get('assay_code')
-#     changed_config_ver = json_dict.get('version')
-
-#     return changed_config_code, changed_config_ver
 
 
 class DXManage():
@@ -75,34 +64,13 @@ class DXManage():
         """
         if not config_file.endswith('.json'):
             raise RuntimeError(
-                'Error: invalid config changed - not a JSON file'
+                'Error: invalid config file given - not a JSON file'
             )
 
         with open(config_file, 'r', encoding='utf8') as json_file:
             config_dict = json.load(json_file)
 
         return config_dict
-
-
-    def read_PR_config_version(self, json_dict):
-        """
-        _summary_
-
-        Parameters
-        ----------
-        json_dict : _type_
-            _description_
-
-        Returns
-        -------
-        _type_
-            _description_
-        """
-        changed_config_code = json_dict.get('assay_code')
-        changed_config_ver = json_dict.get('version')
-
-        return changed_config_code, changed_config_ver
-
 
     def get_json_configs_in_DNAnexus(self) -> dict:
         """
@@ -282,41 +250,82 @@ class DXManage():
 
         return configs_to_use
 
-    # def match_configs(self, changed_config_info, configs_to_use):
-    #     """
-    #     _summary_
+    def match_updated_config_to_prod_config(
+        self, updated_config, updated_config_id, prod_configs
+    ):
+        """
+        For the config file which has been updated, get info on the
+        highest related version in 001_Reference
 
-    #     Parameters
-    #     ----------
-    #     changed_config_info : _type_
-    #         _description_
-    #     configs_to_use : _type_
-    #         _description_
+        Parameters
+        ----------
+        updated_config : dict
+            the config file that was updated in the PR as a dict
+        updated_config_id: str
+            DNAnexus file ID of updated config
+        prod_configs : dict
+            dict where keys are unique assay codes and values are full
+            config as a dict
 
-    #     Returns
-    #     -------
-    #     _type_
-    #         _description_
-    #     """
-    #     all_config_assay_codes = sorted([x.get('assay_code') for x in configs_to_use.])
+        Returns
+        -------
+        changed_config_to_prod : dict
+            dict with info about the changed config and the related prod
+            config
+        """
+        changed_config_to_prod = defaultdict(dict)
+        prod_config_assay_codes = sorted([
+            x.get('assay_code') for x in prod_configs.values()
+        ])
+
+        # Get assay code and version info from updated config
+        updated_config_code = updated_config.get('assay_code')
+        updated_config_version = updated_config.get('version')
+
+        config_matches = {}
+        for prod_code in prod_config_assay_codes:
+            # find all prod config files that match the updated config assay
+            # code
+            if re.search(prod_code, updated_config_code, re.IGNORECASE):
+                config_matches[prod_code] = prod_configs[prod_code]['version']
+
+        if config_matches:
+            # Get highest version of prod config files that matches the updated
+            # config
+            highest_ver_config = max(config_matches.values(), key=parse)
+
+            latest_config_key = list(config_matches)[
+                list(config_matches.values()).index(highest_ver_config)
+            ]
+
+            # Add version and file ID of the config file updated in the PR
+            changed_config_to_prod['updated']['version'] = updated_config_version
+            changed_config_to_prod['updated']['file_id'] = updated_config_id
+
+            # Add version and file ID of the related prod config file
+            changed_config_to_prod['prod']['version'] = highest_ver_config
+            changed_config_to_prod['prod']['file_id'] = prod_configs[
+                latest_config_key
+            ]['file_id']
+
+        print(
+            "\nUpdated config and relevant prod config info:"
+            f"\n{changed_config_to_prod}\n"
+        )
+        return changed_config_to_prod
 
 
 def main():
     args = parse_args()
     dx_manage = DXManage(args)
-    for config_file in args.input_config:
-        changed_config_dict = dx_manage.read_in_json(config_file)
-        changed_config_info = dx_manage.read_PR_config_version(
-            changed_config_dict
-        )
-        # print(changed_config_info)
+
+    changed_config_dict = dx_manage.read_in_json(args.input_config)
+
     config_data = dx_manage.get_json_configs_in_DNAnexus()
     configs_to_use = dx_manage.filter_highest_config_version(config_data)
-    print(configs_to_use)
-
+    dx_manage.match_updated_config_to_prod_config(
+        changed_config_dict, args.file_id, configs_to_use
+    )
 
 if __name__ == '__main__':
     main()
-
-
-
