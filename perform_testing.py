@@ -320,7 +320,7 @@ def main():
     config_data = dx_manage.get_json_configs_in_DNAnexus()
     configs_to_use = dx_manage.filter_highest_config_version(config_data)
     dx_manage.match_updated_config_to_prod_config(
-        changed_config_dict, configs_to_use, args.file_id
+        changed_config_dict, args.file_id, configs_to_use
     )
 
 if __name__ == '__main__':
