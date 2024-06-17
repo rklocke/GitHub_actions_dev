@@ -308,6 +308,10 @@ class DXManage():
                 latest_config_key
             ]['file_id']
 
+        print(
+            "\nUpdated config and relevant prod config info:"
+            f"\n{changed_config_to_prod}\n"
+        )
         return changed_config_to_prod
 
 
