@@ -1,2 +1,2 @@
 dxpy==0.365.0
-packaging==23.2
+packaging==21.3
